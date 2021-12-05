@@ -3,3 +3,4 @@ dico-command
 dico-interaction
 dico-dp
 PyNaCl
+gTTS

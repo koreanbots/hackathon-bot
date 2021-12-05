@@ -1,4 +1,5 @@
 import os
+import logging
 
 import dico
 import dico_command
@@ -6,6 +7,7 @@ import dico_interaction
 
 from config import Config
 
+logging.basicConfig(level=logging.INFO)
 
 bot = dico_command.Bot(Config.TOKEN, "!", intents=dico.Intents.full())
 interaction = dico_interaction.InteractionClient(client=bot)

@@ -3,8 +3,12 @@ import dico_interaction
 
 
 class Music(dico_command.Addon):
-    @dico_interaction.command("play")
+    @dico_command.command("play")
     async def play(self, ctx: dico_command.Context, *, query: str):
+        pass
+
+    @dico_command.command("volume")
+    async def volume(self, ctx, volume: int = None):
         pass
 
 
