@@ -143,9 +143,6 @@ cython_debug/
 # Bot Config
 config.py
 
-# Manually brought temporary modules
-dico_extsource
-
 # Opus DLL; will be included in dico-api later.
 libopus-0.x64.dll
 libopus-0.x86.dll

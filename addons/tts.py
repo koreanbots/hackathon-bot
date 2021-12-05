@@ -41,7 +41,7 @@ class TTS(dico_command.Addon):
 
     @dico_command.on("message_create")
     async def on_tts_message(self, message: dico.Message):
-        if message.author.bot or not self.tts_channel_id or message.channel_id != self.tts_channel_id:
+        if message.author.bot or not self.tts_channel_id or message.channel_id != self.tts_channel_id or await self.bot.verify_prefix(message):
             return
         tts = await generate_tts(message.content, loop=self.bot.loop)
         if tts:

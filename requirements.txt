@@ -1,5 +1,6 @@
 git+https://github.com/dico-api/dico.git@voice
 dico-command
+dico-extsource
 dico-interaction
 dico-dp
 PyNaCl
