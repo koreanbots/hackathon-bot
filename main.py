@@ -7,7 +7,7 @@ import dico_interaction
 
 from config import Config
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 bot = dico_command.Bot(Config.TOKEN, "!", intents=dico.Intents.full())
 interaction = dico_interaction.InteractionClient(client=bot)
