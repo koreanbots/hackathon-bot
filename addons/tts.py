@@ -1,7 +1,6 @@
 import dico
 import dico_command
 import dico_extsource
-import dico_interaction
 
 from typing import Optional
 
@@ -33,9 +32,8 @@ class TTS(dico_command.Addon):
 
     @tts.subcommand("volume")
     async def tts_volume(self, ctx: dico_command.Context, volume: int = None):
-        volume = int(volume) if volume else None  # TODO: auto conversion in dico-command
         if volume is None:
-            return await ctx.reply(f"🔈 현재 TTS 볼륨은 `{self.tts_audio.volume*100}`% 입니다.")
+            return await ctx.reply(f"{'🔊' if self.tts_audio.volume >= 0.5 else '🔉'} 현재 TTS 볼륨은 `{self.tts_audio.volume*100}`% 입니다.")
         self.tts_audio.volume = volume / 100
         await ctx.reply(f"✅ TTS 볼륨을 `{volume}`%로 설정했어요.")
 
