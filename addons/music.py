@@ -1,4 +1,6 @@
+import random
 import asyncio
+import datetime
 
 import dico
 import dico_command
@@ -15,12 +17,14 @@ from modules.utils import parse_second
 
 class MusicData:
     def __init__(self):
-        self.queue = []
-        self.queue_added = asyncio.Event()
-        self.requires_audio = False
-        self.volume = 100
-        self.queue_task_running = None
-        self.latest_channel_id = None
+        self.queue: List[dico_extsource.YTDLSource] = []
+        self.queue_added: asyncio.Event = asyncio.Event()
+        self.requires_audio: bool = False
+        self.volume: int = 100
+        self.queue_task_running: Optional[asyncio.Task] = None
+        self.latest_channel_id: Optional[dico.Snowflake] = None
+        self.loop: bool = False
+        self.shuffle: bool = False
 
 
 class Music(dico_command.Addon):
@@ -57,10 +61,14 @@ class Music(dico_command.Addon):
             voice = self.bot.get_voice_client(guild_id)
             if not voice or voice.ws.destroyed:
                 break
+            audio_loaded = voice.audio
             await voice.wait_audio_done()
             music_data = self.music_data[guild_id]
-            if music_data.queue:
-                audio = music_data.queue.pop(0)
+            if music_data.queue or music_data.loop:
+                if music_data.loop:
+                    audio_loaded = dico_extsource.YTDLSource(audio_loaded.Data)  # let's just hope that URL is still valid
+                    # await audio_loaded.seek(0)
+                audio = audio_loaded if music_data.loop else music_data.queue.pop(random.randint(0, len(music_data.queue) - 1) if music_data.shuffle else 0)
                 embed = self.build_embed(audio, title="재생 시작")
                 audio.volume = music_data.volume
                 await voice.play(audio)
@@ -84,7 +92,7 @@ class Music(dico_command.Addon):
     @staticmethod
     def build_embed(audio: dico_extsource.YTDLSource, title: Optional[str] = None) -> dico.Embed:
         requester = audio.requester
-        embed = dico.Embed(title=title, description=f"[{audio.title}]({audio.webpage_url})", color=0x0fd439)
+        embed = dico.Embed(title=title, description=f"[{audio.title}]({audio.webpage_url})", color=0x0fd439, timestamp=datetime.datetime.utcnow())
         embed.set_thumbnail(url=audio.thumbnail)
         embed.set_author(name=audio.uploader, url=audio.channel_url)
         embed.set_footer(text=f"요청자: {requester}", icon_url=requester.user.avatar_url())
@@ -194,6 +202,24 @@ class Music(dico_command.Addon):
         voice.resume()
         await ctx.reply("✅ 음악을 다시 재생합니다.")
 
+    @dico_command.command("loop", aliases=["l"])
+    async def loop(self, ctx: dico_command.Context):
+        code, text = self.voice_check(ctx, check_connected=True)
+        if code:
+            return await ctx.reply(text)
+        music_data = self.music_data[ctx.guild_id]
+        music_data.loop = not music_data.loop
+        await ctx.reply(f"✅ 현재 재생중인 음악을 반복{'합니다' if music_data.loop else ' 해제합니다'}.")
+
+    @dico_command.command("shuffle", aliases=["sf"])
+    async def shuffle(self, ctx: dico_command.Context):
+        code, text = self.voice_check(ctx, check_connected=True)
+        if code:
+            return await ctx.reply(text)
+        music_data = self.music_data[ctx.guild_id]
+        music_data.shuffle = not music_data.shuffle
+        await ctx.reply(f"✅ 대기열 셔플을 설정{'합니다' if music_data.loop else ' 해제합니다'}.")
+
     @staticmethod
     def create_index_bar(length: float, timestamp: float):
         percent = timestamp / length
@@ -208,10 +234,19 @@ class Music(dico_command.Addon):
         requester = np_audio.requester
         bar = self.create_index_bar(np_audio.duration, np_audio.position)
         music_data = self.music_data[voice.ws.guild_id]
-        status = f"{'▶' if voice.playing else '⏸'} | {'🔊' if np_audio.volume >= 0.5 else '🔉'} `{np_audio.volume * 100}`% | 📁 {len(music_data.queue)}개 대기중"
-        np_embed = dico.Embed(title="현재 재생중인 음악",
-                              description=f"[{np_audio.title}]({np_audio.webpage_url})\n{bar}\n{status}",
-                              color=0x1483bb)
+        extra_scope = ""
+        if music_data.loop:
+            extra_scope += " | 🔂"
+        if music_data.shuffle:
+            extra_scope += " | 🔀"
+        volume = np_audio.volume
+        status = f"{'⏸' if voice.paused else '▶'}{extra_scope} | {'🔊' if volume >= 0.5 else '🔉'} `{volume * 100}`% " \
+                 f"| 📁 `{len(music_data.queue)}`개 대기중"
+        np_embed = dico.Embed(title=np_audio.title,
+                              description=f"{bar}\n{status}",
+                              color=0x1483bb,
+                              url=np_audio.webpage_url,
+                              timestamp=datetime.datetime.utcnow())
         np_embed.set_thumbnail(url=np_audio.thumbnail)
         np_embed.set_author(name=np_audio.uploader, url=np_audio.channel_url)
         np_embed.set_footer(text=f"요청자: {requester}", icon_url=requester.user.avatar_url())
@@ -221,7 +256,7 @@ class Music(dico_command.Addon):
         music_data = self.music_data[guild_id]
         queue = music_data.queue.copy()  # in case of modification
         texts = [f"#{i+1} [`{a.title}`]({a.webpage_url}) - {a.requester.mention}" for i, a in enumerate(queue)]
-        base_embed = dico.Embed(title=f"대기열 - 총 {len(queue)}개", color=rgb(225, 225, 225))
+        base_embed = dico.Embed(title=f"대기열 - 총 {len(queue)}개", color=rgb(225, 225, 225), timestamp=datetime.datetime.utcnow())
         resp = []
         em = base_embed.copy()
         em.description = texts[0]
@@ -260,7 +295,7 @@ class Music(dico_command.Addon):
             return inter_ctx.data.custom_id.endswith(str(ctx.id)) and int(inter_ctx.author) == int(ctx.author)
         return wrap
 
-    @dico_command.command("list", aliases=["l", "ql", "queuelist", "player", "nowplaying", "np"])
+    @dico_command.command("list", aliases=["ql", "queuelist", "player", "nowplaying", "np"])
     async def queue_list(self, ctx: dico_command.Context):
         voice = self.bot.get_voice_client(ctx.guild_id)
         np_audio = voice.audio
