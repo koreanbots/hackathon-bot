@@ -2,7 +2,7 @@ import dico
 import dico_command
 import dico_extsource
 
-from typing import Optional
+from typing import Optional, Dict
 
 from modules.tts import generate_tts
 
@@ -10,10 +10,12 @@ from modules.tts import generate_tts
 class TTS(dico_command.Addon):
     tts_audio: dico_extsource.Mixer
     tts_channel_id: Optional[dico.Snowflake]
+    filters: Dict[str, str]
 
     def on_load(self):
         self.tts_audio = dico_extsource.Mixer()
         self.tts_channel_id = None
+        self.filters = {"atempo": "1.0"}
 
     @dico_command.command("tts")
     async def tts(self, ctx: dico_command.Context):
@@ -37,13 +39,22 @@ class TTS(dico_command.Addon):
         self.tts_audio.volume = volume / 100
         await ctx.reply(f"✅ TTS 볼륨을 `{volume}`%로 설정했어요.")
 
+    @tts.subcommand("speed")
+    async def tts_speed(self, ctx: dico_command.Context, speed: float = None):
+        if speed > 2 or speed < 0.5:
+            return await ctx.reply("❌ 잘못된 설정값입니다. 0.5 ~ 2.0 사이만 가능합니다.")
+        self.filters["atempo"] = str(speed)
+        await ctx.reply(f"✅ 배속을 `{speed}`로 설정했습니다.")
+
     @dico_command.on("message_create")
     async def on_tts_message(self, message: dico.Message):
         if message.author.bot or not self.tts_channel_id or message.channel_id != self.tts_channel_id or await self.bot.verify_prefix(message):
             return
         tts = await generate_tts(message.content, loop=self.bot.loop)
         if tts:
-            self.tts_audio.addTrack(dico_extsource.PyAVSource(tts, AVOption={"mode": "r"}))
+            audio = dico_extsource.PyAVSource(tts, AVOption={"mode": "r"})
+            audio.filter = self.filters
+            self.tts_audio.addTrack(audio)
 
 
 def load(bot):
