@@ -33,8 +33,14 @@ class Music(dico_command.Addon):
     def on_load(self):
         self.music_data = {}
 
-    def voice_check(self, ctx: dico_command.Context, *, check_connected: bool = False, check_playing: bool = False, check_paused: bool = False) \
-            -> Tuple[int, Optional[str]]:
+    def voice_check(
+        self,
+        ctx: dico_command.Context,
+        *,
+        check_connected: bool = False,
+        check_playing: bool = False,
+        check_paused: bool = False,
+    ) -> Tuple[int, Optional[str]]:
         state = ctx.author.voice_state
 
         if check_playing and check_paused:
@@ -66,9 +72,19 @@ class Music(dico_command.Addon):
             music_data = self.music_data[guild_id]
             if music_data.queue or music_data.loop:
                 if music_data.loop:
-                    audio_loaded = dico_extsource.YTDLSource(audio_loaded.Data)  # let's just hope that URL is still valid
+                    audio_loaded = dico_extsource.YTDLSource(
+                        audio_loaded.Data
+                    )  # let's just hope that URL is still valid
                     # await audio_loaded.seek(0)
-                audio = audio_loaded if music_data.loop else music_data.queue.pop(random.randint(0, len(music_data.queue) - 1) if music_data.shuffle else 0)
+                audio = (
+                    audio_loaded
+                    if music_data.loop
+                    else music_data.queue.pop(
+                        random.randint(0, len(music_data.queue) - 1)
+                        if music_data.shuffle
+                        else 0
+                    )
+                )
                 embed = self.build_embed(audio, title="재생 시작")
                 audio.volume = music_data.volume
                 await voice.play(audio)
@@ -76,11 +92,20 @@ class Music(dico_command.Addon):
             else:
                 try:
                     music_data.requires_audio = True
-                    await self.bot.create_message(music_data.latest_channel_id, "ℹ 대기열이 비었습니다. 5분 안에 음악이 추가되지 않으면 플레이어가 종료됩니다.")
-                    await asyncio.wait_for(music_data.queue_added.wait(), timeout=60 * 5, loop=self.bot.loop)
+                    await self.bot.create_message(
+                        music_data.latest_channel_id,
+                        "ℹ 대기열이 비었습니다. 5분 안에 음악이 추가되지 않으면 플레이어가 종료됩니다.",
+                    )
+                    await asyncio.wait_for(
+                        music_data.queue_added.wait(),
+                        timeout=60 * 5,
+                        loop=self.bot.loop,
+                    )
                 except asyncio.TimeoutError:
                     await voice.close()
-                    await self.bot.create_message(music_data.latest_channel_id, "ℹ 플레이어를 종료합니다.")
+                    await self.bot.create_message(
+                        music_data.latest_channel_id, "ℹ 플레이어를 종료합니다."
+                    )
                     music_data.queue_task_running = None
                     music_data.queue = []
                     break
@@ -90,9 +115,16 @@ class Music(dico_command.Addon):
                         music_data.queue_added.clear()
 
     @staticmethod
-    def build_embed(audio: dico_extsource.YTDLSource, title: Optional[str] = None) -> dico.Embed:
+    def build_embed(
+        audio: dico_extsource.YTDLSource, title: Optional[str] = None
+    ) -> dico.Embed:
         requester = audio.requester
-        embed = dico.Embed(title=title, description=f"[{audio.title}]({audio.webpage_url})", color=0x0fd439, timestamp=datetime.datetime.utcnow())
+        embed = dico.Embed(
+            title=title,
+            description=f"[{audio.title}]({audio.webpage_url})",
+            color=0x0FD439,
+            timestamp=datetime.datetime.utcnow(),
+        )
         embed.set_thumbnail(url=audio.thumbnail)
         embed.set_author(name=audio.uploader, url=audio.channel_url)
         embed.set_footer(text=f"요청자: {requester}", icon_url=requester.user.avatar_url())
@@ -100,7 +132,10 @@ class Music(dico_command.Addon):
 
     def queue_task_unavailable(self, music_data: MusicData) -> bool:
         if hasattr(self, "queue_task_running"):
-            return music_data.queue_task_running and (music_data.queue_task_running.cancelled() or music_data.queue_task_running.done())
+            return music_data.queue_task_running and (
+                music_data.queue_task_running.cancelled()
+                or music_data.queue_task_running.done()
+            )
 
     @dico_command.command("play", aliases=["queue", "p", "q", "pl"])
     async def play(self, ctx: dico_command.Context, *, query: str):
@@ -131,7 +166,9 @@ class Music(dico_command.Addon):
         await ctx.create_reaction("✅")
         await ctx.reply(embed=embed)
         if not music_data.queue_task_running:
-            music_data.queue_task_running = self.bot.loop.create_task(self.queue_task(ctx.guild_id))
+            music_data.queue_task_running = self.bot.loop.create_task(
+                self.queue_task(ctx.guild_id)
+            )
 
     @dico_command.command("volume", aliases=["vol", "v"])
     async def volume(self, ctx, volume: int = None):
@@ -141,7 +178,9 @@ class Music(dico_command.Addon):
         voice = self.bot.get_voice_client(ctx.guild)
         music_data = self.music_data[ctx.guild_id]
         if volume is None:
-            return await ctx.reply(f"{'🔊' if voice.audio.volume >= 0.5 else '🔉'} 현재 음악 볼륨은 `{voice.audio.volume*100}`% 입니다.")
+            return await ctx.reply(
+                f"{'🔊' if voice.audio.volume >= 0.5 else '🔉'} 현재 음악 볼륨은 `{voice.audio.volume*100}`% 입니다."
+            )
         if volume < 0 or volume > 100:
             return await ctx.reply("❌ 볼륨은 0~100 사이의 숫자만 가능합니다.")
         voice.audio.volume = volume / 100
@@ -167,7 +206,7 @@ class Music(dico_command.Addon):
                     music_data.queue.pop(0)
             else:
                 text = f"{index}번쩨 "
-                music_data.queue.pop(index-1)
+                music_data.queue.pop(index - 1)
         await ctx.reply(f"✅ {text}음악을 스킵했습니다.")
 
     @dico_command.command("stop")
@@ -180,7 +219,9 @@ class Music(dico_command.Addon):
         music_data.queue = []
         await voice.close()
         await ctx.reply("✅ 모든 대기열을 지우고 음악을 정지했습니다.")
-        if music_data.queue_task_running and not self.queue_task_unavailable(music_data):
+        if music_data.queue_task_running and not self.queue_task_unavailable(
+            music_data
+        ):
             music_data.queue_task_running.cancel()
         music_data.queue_task_running = None
 
@@ -240,23 +281,38 @@ class Music(dico_command.Addon):
         if music_data.shuffle:
             extra_scope += " | 🔀"
         volume = np_audio.volume
-        status = f"{'⏸' if voice.paused else '▶'}{extra_scope} | {'🔊' if volume >= 0.5 else '🔉'} `{volume * 100}`% " \
-                 f"| 📁 `{len(music_data.queue)}`개 대기중"
-        np_embed = dico.Embed(title=np_audio.title,
-                              description=f"{bar}\n{status}",
-                              color=0x1483bb,
-                              url=np_audio.webpage_url,
-                              timestamp=datetime.datetime.utcnow())
+        status = (
+            f"{'⏸' if voice.paused else '▶'}{extra_scope} | {'🔊' if volume >= 0.5 else '🔉'} `{volume * 100}`% "
+            f"| 📁 `{len(music_data.queue)}`개 대기중"
+        )
+        np_embed = dico.Embed(
+            title=np_audio.title,
+            description=f"{bar}\n{status}",
+            color=0x1483BB,
+            url=np_audio.webpage_url,
+            timestamp=datetime.datetime.utcnow(),
+        )
         np_embed.set_thumbnail(url=np_audio.thumbnail)
         np_embed.set_author(name=np_audio.uploader, url=np_audio.channel_url)
-        np_embed.set_footer(text=f"요청자: {requester}", icon_url=requester.user.avatar_url())
+        np_embed.set_footer(
+            text=f"요청자: {requester}", icon_url=requester.user.avatar_url()
+        )
         return np_embed
 
-    def create_queue_embed(self, guild_id: dico.Snowflake, index: Optional[int] = None) -> Union[dico.Embed, List[dico.Embed]]:
+    def create_queue_embed(
+        self, guild_id: dico.Snowflake, index: Optional[int] = None
+    ) -> Union[dico.Embed, List[dico.Embed]]:
         music_data = self.music_data[guild_id]
         queue = music_data.queue.copy()  # in case of modification
-        texts = [f"#{i+1} [`{a.title}`]({a.webpage_url}) - {a.requester.mention}" for i, a in enumerate(queue)]
-        base_embed = dico.Embed(title=f"대기열 - 총 {len(queue)}개", color=rgb(225, 225, 225), timestamp=datetime.datetime.utcnow())
+        texts = [
+            f"#{i+1} [`{a.title}`]({a.webpage_url}) - {a.requester.mention}"
+            for i, a in enumerate(queue)
+        ]
+        base_embed = dico.Embed(
+            title=f"대기열 - 총 {len(queue)}개",
+            color=rgb(225, 225, 225),
+            timestamp=datetime.datetime.utcnow(),
+        )
         resp = []
         em = base_embed.copy()
         em.description = texts[0]
@@ -281,21 +337,50 @@ class Music(dico_command.Addon):
     @staticmethod
     def create_buttons(enable_np: bool, enable_queue: bool, cid: Any):
         if enable_np and enable_queue:
-            raise ValueError("enable_np and enable_queue must be different or both False")
-        button_np = dico.Button(style=dico.ButtonStyles.SUCCESS,  emoji="⏯", custom_id=f"nowplaying{cid}", disabled=not enable_np)
-        button_queue = dico.Button(style=dico.ButtonStyles.PRIMARY, emoji="📁", custom_id=f"queue{cid}", disabled=not enable_queue)
-        button_prev = dico.Button(style=dico.ButtonStyles.SECONDARY, emoji="⬅", custom_id=f"ppage{cid}", disabled=not enable_np)
-        button_next = dico.Button(style=dico.ButtonStyles.SECONDARY, emoji="➡", custom_id=f"npage{cid}", disabled=not enable_np)
+            raise ValueError(
+                "enable_np and enable_queue must be different or both False"
+            )
+        button_np = dico.Button(
+            style=dico.ButtonStyles.SUCCESS,
+            emoji="⏯",
+            custom_id=f"nowplaying{cid}",
+            disabled=not enable_np,
+        )
+        button_queue = dico.Button(
+            style=dico.ButtonStyles.PRIMARY,
+            emoji="📁",
+            custom_id=f"queue{cid}",
+            disabled=not enable_queue,
+        )
+        button_prev = dico.Button(
+            style=dico.ButtonStyles.SECONDARY,
+            emoji="⬅",
+            custom_id=f"ppage{cid}",
+            disabled=not enable_np,
+        )
+        button_next = dico.Button(
+            style=dico.ButtonStyles.SECONDARY,
+            emoji="➡",
+            custom_id=f"npage{cid}",
+            disabled=not enable_np,
+        )
         return dico.ActionRow(button_np, button_queue, button_prev, button_next)
 
     def create_check(self, ctx: dico_command.Context):
         def wrap(inter_ctx: dico_interaction.InteractionContext):
             if int(inter_ctx.author) != int(ctx.author):
-                self.bot.loop.create_task(inter_ctx.send("이 버튼은 사용하실 수 없습니다.", ephemeral=True))
-            return inter_ctx.data.custom_id.endswith(str(ctx.id)) and int(inter_ctx.author) == int(ctx.author)
+                self.bot.loop.create_task(
+                    inter_ctx.send("이 버튼은 사용하실 수 없습니다.", ephemeral=True)
+                )
+            return inter_ctx.data.custom_id.endswith(str(ctx.id)) and int(
+                inter_ctx.author
+            ) == int(ctx.author)
+
         return wrap
 
-    @dico_command.command("list", aliases=["ql", "queuelist", "player", "nowplaying", "np"])
+    @dico_command.command(
+        "list", aliases=["ql", "queuelist", "player", "nowplaying", "np"]
+    )
     async def queue_list(self, ctx: dico_command.Context):
         voice = self.bot.get_voice_client(ctx.guild_id)
         np_audio = voice.audio
@@ -309,13 +394,25 @@ class Music(dico_command.Addon):
         max_index = len(music_data.queue) // 10 + 1
         msg = await ctx.reply("<a:loading:868755640909201448> 잠시만 기다려주세요...")
         while True:
-            embed = self.create_np_embed(np_audio, voice) if np_page else self.create_queue_embed(ctx.guild_id, index)
-            await msg.edit(content=None, embed=embed, components=[self.create_buttons(not np_page, np_page, ctx.id)])
+            embed = (
+                self.create_np_embed(np_audio, voice)
+                if np_page
+                else self.create_queue_embed(ctx.guild_id, index)
+            )
+            await msg.edit(
+                content=None,
+                embed=embed,
+                components=[self.create_buttons(not np_page, np_page, ctx.id)],
+            )
             try:
-                interaction = await self.bot.interaction.wait_interaction(timeout=30, check=self.create_check(ctx))
+                interaction = await self.bot.interaction.wait_interaction(
+                    timeout=30, check=self.create_check(ctx)
+                )
                 await interaction.send(update_message=True)
             except asyncio.TimeoutError:
-                return await msg.edit(components=[self.create_buttons(False, False, ctx.id)])
+                return await msg.edit(
+                    components=[self.create_buttons(False, False, ctx.id)]
+                )
             if interaction.data.custom_id.startswith("nowplaying"):
                 np_page = True
             elif interaction.data.custom_id.startswith("queue"):

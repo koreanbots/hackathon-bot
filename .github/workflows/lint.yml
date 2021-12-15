@@ -1,0 +1,23 @@
+name: Tests
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: '*'
+
+jobs:
+  style:
+    name: Check Style
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup python 3.9.5
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9.5'
+      - name: install requirements
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: check style
+        run: black .
