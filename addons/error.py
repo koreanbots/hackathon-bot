@@ -11,7 +11,7 @@ class Error(dico_command.Addon):
         elif isinstance(ex, dico_command.CheckFailed):
             await ctx.reply("❌ 권한이 없습니다.")
         else:
-            tb = ''.join(traceback.format_exception(type(ex), ex, ex.__traceback__))
+            tb = "".join(traceback.format_exception(type(ex), ex, ex.__traceback__))
             edited_tb = ("..." + tb[-1985:]) if len(tb) > 2000 else tb
             await ctx.reply(f"```py\n{edited_tb}\n```")
 

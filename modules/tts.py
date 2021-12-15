@@ -13,5 +13,7 @@ def _generate_tts(text: str) -> BytesIO:
     return file
 
 
-async def generate_tts(text: str, loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()) -> BytesIO:
+async def generate_tts(
+    text: str, loop: asyncio.AbstractEventLoop = asyncio.get_event_loop()
+) -> BytesIO:
     return await loop.run_in_executor(None, _generate_tts, text)
