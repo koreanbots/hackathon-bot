@@ -20,7 +20,7 @@ class MusicData:
         self.queue: List[dico_extsource.YTDLSource] = []
         self.queue_added: asyncio.Event = asyncio.Event()
         self.requires_audio: bool = False
-        self.volume: int = 100
+        self.volume: float = 1.0
         self.queue_task_running: Optional[asyncio.Task] = None
         self.latest_channel_id: Optional[dico.Snowflake] = None
         self.loop: bool = False
@@ -217,13 +217,13 @@ class Music(dico_command.Addon):
         voice = self.bot.get_voice_client(ctx.guild)
         music_data = self.music_data[ctx.guild_id]
         music_data.queue = []
-        await voice.close()
-        await ctx.reply("✅ 모든 대기열을 지우고 음악을 정지했습니다.")
         if music_data.queue_task_running and not self.queue_task_unavailable(
             music_data
         ):
             music_data.queue_task_running.cancel()
         music_data.queue_task_running = None
+        await voice.close()
+        await ctx.reply("✅ 모든 대기열을 지우고 음악을 정지했습니다.")
 
     @dico_command.command("pause", aliases=["ps"])
     async def pause(self, ctx: dico_command.Context):
@@ -271,7 +271,7 @@ class Music(dico_command.Addon):
         cpos = parse_second(round(timestamp))
         return f"**{''.join(base)}** [`{cpos}`/`{vid}`]"
 
-    def create_np_embed(self, np_audio: dico_extsource.YTDLSource, voice: VoiceClient):
+    def create_np_embed(self, np_audio: dico_extsource.YTDLSource, voice: VoiceClient) -> dico.Embed:
         requester = np_audio.requester
         bar = self.create_index_bar(np_audio.duration, np_audio.position)
         music_data = self.music_data[voice.ws.guild_id]
