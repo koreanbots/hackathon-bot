@@ -1,6 +1,6 @@
 dico-api>=0.0.28
 dico-command>=0.0.10
-dico-extsource>=0.0.3
+dico-extsource>=0.0.4
 dico-interaction>=0.0.7
 dico-dp>=0.0.5
 PyNaCl>=1.4.0
