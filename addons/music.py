@@ -26,6 +26,13 @@ class MusicData:
         self.loop: bool = False
         self.shuffle: bool = False
 
+    @property
+    def queue_task_unavailable(self) -> bool:
+        return not self.queue_task_running or (
+                self.queue_task_running.cancelled()
+                or self.queue_task_running.done()
+        )
+
 
 class Music(dico_command.Addon):
     music_data: Dict[dico.Snowflake, MusicData]
@@ -130,13 +137,6 @@ class Music(dico_command.Addon):
         embed.set_footer(text=f"요청자: {requester}", icon_url=requester.user.avatar_url())
         return embed
 
-    def queue_task_unavailable(self, music_data: MusicData) -> bool:
-        if hasattr(self, "queue_task_running"):
-            return music_data.queue_task_running and (
-                music_data.queue_task_running.cancelled()
-                or music_data.queue_task_running.done()
-            )
-
     @dico_command.command("play", aliases=["queue", "p", "q", "pl"])
     async def play(self, ctx: dico_command.Context, *, query: str):
         code, text = self.voice_check(ctx)
@@ -154,7 +154,7 @@ class Music(dico_command.Addon):
         audio.Data["invoked_at"] = ctx.channel_id
         music_data.latest_channel_id = ctx.channel_id
         embed = self.build_embed(audio)
-        if not music_data.queue_task_running or self.queue_task_unavailable(music_data):
+        if music_data.queue_task_unavailable:
             embed.title = "재생 시작"
             await voice.play(audio)
         else:
@@ -217,9 +217,7 @@ class Music(dico_command.Addon):
         voice = self.bot.get_voice_client(ctx.guild)
         music_data = self.music_data[ctx.guild_id]
         music_data.queue = []
-        if music_data.queue_task_running and not self.queue_task_unavailable(
-            music_data
-        ):
+        if not music_data.queue_task_unavailable:
             music_data.queue_task_running.cancel()
         music_data.queue_task_running = None
         await voice.close()
