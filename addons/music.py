@@ -271,7 +271,9 @@ class Music(dico_command.Addon):
         cpos = parse_second(round(timestamp))
         return f"**{''.join(base)}** [`{cpos}`/`{vid}`]"
 
-    def create_np_embed(self, np_audio: dico_extsource.YTDLSource, voice: VoiceClient) -> dico.Embed:
+    def create_np_embed(
+        self, np_audio: dico_extsource.YTDLSource, voice: VoiceClient
+    ) -> dico.Embed:
         requester = np_audio.requester
         bar = self.create_index_bar(np_audio.duration, np_audio.position)
         music_data = self.music_data[voice.ws.guild_id]
