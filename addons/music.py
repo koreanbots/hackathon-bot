@@ -29,8 +29,7 @@ class MusicData:
     @property
     def queue_task_unavailable(self) -> bool:
         return not self.queue_task_running or (
-                self.queue_task_running.cancelled()
-                or self.queue_task_running.done()
+            self.queue_task_running.cancelled() or self.queue_task_running.done()
         )
 
 
