@@ -1,4 +1,4 @@
-dico-api>=0.0.28
+dico-api>=0.0.29
 dico-command>=0.0.10
 dico-extsource>=0.0.4
 dico-interaction>=0.0.7
