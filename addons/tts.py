@@ -9,6 +9,9 @@ from modules.tts import generate_tts
 
 
 EMOJI = compile(r"<:(.+?):\d{18}>")
+URL = compile(
+    r"[http|https\:\/\/]?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.[a-zA-Z][a-zA-Z0-9\.\&\/\?\:@\-_=#]*"
+)
 
 
 class TTS(dico_command.Addon):
@@ -70,6 +73,8 @@ class TTS(dico_command.Addon):
                 msg = msg.replace(f"<@!{mention.user.id}>", f"{mention.user.username}")
 
         msg = sub(EMOJI, r"\1", msg)
+
+        msg = sub(URL, "", msg)
 
         tts = await generate_tts(msg, loop=self.bot.loop)
         if tts:
