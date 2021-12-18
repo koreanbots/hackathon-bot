@@ -3,7 +3,7 @@ import dico_command
 import dico_extsource
 
 from typing import Optional, Dict
-from re import compile, finditer, sub
+from re import compile, sub
 
 from modules.tts import generate_tts
 
