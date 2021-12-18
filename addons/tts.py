@@ -3,8 +3,12 @@ import dico_command
 import dico_extsource
 
 from typing import Optional, Dict
+from re import compile, finditer, sub
 
 from modules.tts import generate_tts
+
+
+EMOJI = compile(r"<:(.+?):\d{18}>")
 
 
 class TTS(dico_command.Addon):
@@ -64,6 +68,10 @@ class TTS(dico_command.Addon):
         if message.mentions:
             for mention in message.mentions:
                 msg = msg.replace(f"<@!{mention.user.id}>", f"{mention.user.username}")
+
+        if match_list := [x for x in finditer(EMOJI, msg)]:
+            for mat in match_list:
+                msg = msg.replace(mat.group(), mat.group(1))
 
         tts = await generate_tts(msg, loop=self.bot.loop)
         if tts:
