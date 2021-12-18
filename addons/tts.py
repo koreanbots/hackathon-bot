@@ -59,7 +59,13 @@ class TTS(dico_command.Addon):
             or await self.bot.verify_prefix(message)
         ):
             return
-        tts = await generate_tts(message.content, loop=self.bot.loop)
+        msg = message.content
+
+        if message.mentions:
+            for mention in message.mentions:
+                msg = msg.replace(f"<@!{mention.user.id}>", f"{mention.user.username}")
+
+        tts = await generate_tts(msg, loop=self.bot.loop)
         if tts:
             audio = dico_extsource.PyAVSource(tts, AVOption={"mode": "r"})
             audio.filter = self.filters
