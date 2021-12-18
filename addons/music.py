@@ -366,7 +366,7 @@ class Music(dico_command.Addon):
 
     def create_check(self, ctx: dico_command.Context):
         def wrap(inter_ctx: dico_interaction.InteractionContext):
-            if int(inter_ctx.author) != int(ctx.author):
+            if inter_ctx.data.custom_id.endswith(str(ctx.id)) and int(inter_ctx.author) != int(ctx.author):
                 self.bot.loop.create_task(
                     inter_ctx.send("이 버튼은 사용하실 수 없습니다.", ephemeral=True)
                 )
