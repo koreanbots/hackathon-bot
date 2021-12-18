@@ -7,7 +7,6 @@ import dico_command
 import dico_interaction
 
 from dico_command.utils import search
-from modules.utils import search_iter
 
 from config import Config
 
