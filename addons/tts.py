@@ -69,9 +69,7 @@ class TTS(dico_command.Addon):
             for mention in message.mentions:
                 msg = msg.replace(f"<@!{mention.user.id}>", f"{mention.user.username}")
 
-        if match_list := [x for x in finditer(EMOJI, msg)]:
-            for mat in match_list:
-                msg = msg.replace(mat.group(), mat.group(1))
+        msg = sub(EMOJI, r"\1", msg)
 
         tts = await generate_tts(msg, loop=self.bot.loop)
         if tts:
