@@ -198,14 +198,13 @@ class Music(dico_command.Addon):
         if index == 0:
             text = "현재 재생중인 "
             await voice.stop()
+        elif index < 0:
+            text = f"{-index}개의 "
+            for _ in range(-index):
+                music_data.queue.pop(0)
         else:
-            if index < 0:
-                text = f"{-index}개의 "
-                for _ in range(-index):
-                    music_data.queue.pop(0)
-            else:
-                text = f"{index}번쩨 "
-                music_data.queue.pop(index - 1)
+            text = f"{index}번쩨 "
+            music_data.queue.pop(index - 1)
         await ctx.reply(f"✅ {text}음악을 스킵했습니다.")
 
     @dico_command.command("stop")
