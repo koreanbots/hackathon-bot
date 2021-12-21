@@ -70,7 +70,8 @@ class TTS(dico_command.Addon):
 
         if message.mentions:
             for mention in message.mentions:
-                msg = msg.replace(f"<@!{mention.user.id}>", f"{mention.user.username}")
+                msg = msg.replace(f"<@!{mention.user.id}>", f"{mention}")
+                msg = msg.replace(f"<@{mention.user.id}>", f"{mention}")
 
         msg = sub(EMOJI, r"\1", msg)
 
