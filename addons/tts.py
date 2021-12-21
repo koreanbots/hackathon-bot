@@ -8,7 +8,7 @@ from re import compile, sub
 from modules.tts import generate_tts
 
 
-EMOJI = compile(r"<:(.+?):\d{18}>")
+EMOJI = compile(r"<a?:(.+?):\d{18}>")
 URL = compile(
     r"[http|https\:\/\/]?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.[a-zA-Z][a-zA-Z0-9\.\&\/\?\:@\-_=#]*"
 )
