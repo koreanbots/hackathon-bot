@@ -7,6 +7,8 @@ import dico_command
 import dico_extsource
 import dico_interaction
 
+from math import ceil
+from contextlib import suppress
 from typing import List, Tuple, Optional, Any, Union, Dict
 
 from dico.utils import rgb
@@ -121,18 +123,30 @@ class Music(dico_command.Addon):
                         music_data.queue_added.clear()
 
     @staticmethod
+    def youtube_url(audio: dico_extsource.YTDLSource):
+        return (
+            audio.webpage_url
+            if "webpage_url" in audio.Data
+            else f"https://www.youtube.com/watch?v={audio.id}"
+        )
+
     def build_embed(
-        audio: dico_extsource.YTDLSource, title: Optional[str] = None
+        self, audio: dico_extsource.YTDLSource, title: Optional[str] = None
     ) -> dico.Embed:
         requester = audio.requester
         embed = dico.Embed(
             title=title,
-            description=f"[{audio.title}]({audio.webpage_url})",
+            description=f"[{audio.title}]({self.youtube_url(audio)})",
             color=0x0FD439,
             timestamp=datetime.datetime.utcnow(),
         )
-        embed.set_thumbnail(url=audio.thumbnail)
-        embed.set_author(name=audio.uploader, url=audio.channel_url)
+        with suppress(KeyError):
+            embed.set_thumbnail(url=audio.thumbnail)
+        with suppress(KeyError):
+            embed.set_author(
+                name=audio.uploader,
+                url=audio.channel_url if "channel_url" in audio.Data else None,
+            )
         embed.set_footer(text=f"요청자: {requester}", icon_url=requester.user.avatar_url())
         return embed
 
@@ -148,7 +162,24 @@ class Music(dico_command.Addon):
             self.music_data[ctx.guild_id] = MusicData()
         music_data = self.music_data[ctx.guild_id]
         await ctx.create_reaction("<a:loading:868755640909201448>")
-        audio = await dico_extsource.YTDLSource.create(query)
+        resp = await dico_extsource.extract(query)
+        if isinstance(resp, list):
+            queues = [
+                dico_extsource.YTDLSource(x)
+                if "webpage_url" in x
+                else await dico_extsource.YTDLSource.create(x["id"])
+                for x in resp
+            ]
+            if not queues:
+                return await ctx.reply("❌ 영상을 불러오지 못했습니다. 다시 시도해주세요.")
+            audio = queues.pop(0)
+        elif "webpage_url" not in resp:
+            queues = []
+            audio = await dico_extsource.YTDLSource.create(resp["id"])
+        else:
+            queues = []
+            audio = dico_extsource.YTDLSource(resp)
+        # audio = await dico_extsource.YTDLSource.create(query)
         audio.Data["requester"] = ctx.member
         audio.Data["invoked_at"] = ctx.channel_id
         music_data.latest_channel_id = ctx.channel_id
@@ -161,6 +192,12 @@ class Music(dico_command.Addon):
             music_data.queue.append(audio)
             if music_data.requires_audio and not music_data.queue_added.is_set():
                 music_data.queue_added.set()
+        if queues:
+            for x in queues:
+                x.Data["requester"] = ctx.member
+                x.Data["invoked_at"] = ctx.channel_id
+            embed.description += f" 외 {len(queues)}개"
+            music_data.queue.extend(queues)
         await ctx.delete_reaction("<a:loading:868755640909201448>")
         await ctx.create_reaction("✅")
         await ctx.reply(embed=embed)
@@ -287,11 +324,16 @@ class Music(dico_command.Addon):
             title=np_audio.title,
             description=f"{bar}\n{status}",
             color=0x1483BB,
-            url=np_audio.webpage_url,
+            url=self.youtube_url(np_audio),
             timestamp=datetime.datetime.utcnow(),
         )
-        np_embed.set_thumbnail(url=np_audio.thumbnail)
-        np_embed.set_author(name=np_audio.uploader, url=np_audio.channel_url)
+        with suppress(KeyError):
+            np_embed.set_thumbnail(url=np_audio.thumbnail)
+        with suppress(KeyError):
+            np_embed.set_author(
+                name=np_audio.uploader,
+                url=np_audio.channel_url if "channel_url" in np_audio.Data else None,
+            )
         np_embed.set_footer(
             text=f"요청자: {requester}", icon_url=requester.user.avatar_url()
         )
@@ -303,7 +345,7 @@ class Music(dico_command.Addon):
         music_data = self.music_data[guild_id]
         queue = music_data.queue.copy()  # in case of modification
         texts = [
-            f"#{i+1} [`{a.title}`]({a.webpage_url}) - {a.requester.mention}"
+            f"#{i+1} [`{a.title}`]({self.youtube_url(a)}) - {a.requester.mention}"
             for i, a in enumerate(queue)
         ]
         base_embed = dico.Embed(
@@ -366,7 +408,9 @@ class Music(dico_command.Addon):
 
     def create_check(self, ctx: dico_command.Context):
         def wrap(inter_ctx: dico_interaction.InteractionContext):
-            if inter_ctx.data.custom_id.endswith(str(ctx.id)) and int(inter_ctx.author) != int(ctx.author):
+            if inter_ctx.data.custom_id.endswith(str(ctx.id)) and int(
+                inter_ctx.author
+            ) != int(ctx.author):
                 self.bot.loop.create_task(
                     inter_ctx.send("이 버튼은 사용하실 수 없습니다.", ephemeral=True)
                 )
@@ -389,7 +433,7 @@ class Music(dico_command.Addon):
             return await ctx.reply(embed=self.create_np_embed(np_audio, voice))
         np_page = True
         index = 0
-        max_index = len(music_data.queue) // 10 + 1
+        max_index = ceil(len(music_data.queue) / 10)
         msg = await ctx.reply("<a:loading:868755640909201448> 잠시만 기다려주세요...")
         while True:
             embed = (
