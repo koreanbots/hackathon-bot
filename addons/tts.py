@@ -68,6 +68,8 @@ class TTS(dico_command.Addon):
             return
         msg = message.content
 
+        msg = msg.replace("ㅋ", "크").replace("ㅎ", "흐").replace("ㄷ", "덜")
+
         if message.mentions:
             for mention in message.mentions:
                 msg = msg.replace(f"<@!{mention.user.id}>", f"{mention}")
