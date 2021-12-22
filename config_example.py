@@ -1,3 +1,5 @@
+from typing import List
+
 from dico import Snowflake
 
 
@@ -11,4 +13,4 @@ class Config:
     MAKETHON_NAME: str = "메이크톤"
     MAX_IDEATHON_VOTES: int = 2
     MAX_MAKETHON_VOTES: int = 2
-    EXCLUDE_CATEGORIES: str = ["메뉴얼"]
+    EXCLUDE_CATEGORIES: List[str] = ["메뉴얼"]
