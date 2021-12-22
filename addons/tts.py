@@ -3,8 +3,15 @@ import dico_command
 import dico_extsource
 
 from typing import Optional, Dict
+from re import compile, sub
 
 from modules.tts import generate_tts
+
+
+EMOJI = compile(r"<a?:(.+?):\d{18}>")
+URL = compile(
+    r"[http|https\:\/\/]?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.[a-zA-Z][a-zA-Z0-9\.\&\/\?\:@\-_=#]*"
+)
 
 
 class TTS(dico_command.Addon):
@@ -59,7 +66,20 @@ class TTS(dico_command.Addon):
             or await self.bot.verify_prefix(message)
         ):
             return
-        tts = await generate_tts(message.content, loop=self.bot.loop)
+        msg = message.content
+
+        msg = msg.replace("ㅋ", "크").replace("ㅎ", "흐").replace("ㄷ", "덜")
+
+        if message.mentions:
+            for mention in message.mentions:
+                msg = msg.replace(f"<@!{mention.user.id}>", f"{mention}")
+                msg = msg.replace(f"<@{mention.user.id}>", f"{mention}")
+
+        msg = sub(EMOJI, r"\1", msg)
+
+        msg = sub(URL, "", msg)
+
+        tts = await generate_tts(msg, loop=self.bot.loop)
         if tts:
             audio = dico_extsource.PyAVSource(tts, AVOption={"mode": "r"})
             audio.filter = self.filters
