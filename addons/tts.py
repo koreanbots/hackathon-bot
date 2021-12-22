@@ -5,6 +5,8 @@ import dico_extsource
 from typing import Optional, Dict
 from re import compile, sub
 
+from dico_command.utils import search
+
 from modules.tts import generate_tts
 
 
@@ -18,6 +20,9 @@ class TTS(dico_command.Addon):
     tts_audio: dico_extsource.Mixer
     tts_channel_id: Optional[dico.Snowflake]
     filters: Dict[str, str]
+
+    async def addon_check(self, ctx: dico_command.Context):
+        return bool(search(ctx.member.roles, name="TEAM"))
 
     def on_load(self):
         self.tts_audio = dico_extsource.Mixer()

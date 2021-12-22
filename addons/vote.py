@@ -1,5 +1,3 @@
-import asyncio
-
 from typing import List
 
 import dico

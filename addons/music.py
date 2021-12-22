@@ -13,6 +13,7 @@ from typing import List, Tuple, Optional, Any, Union, Dict
 
 from dico.utils import rgb
 from dico.voice import VoiceClient
+from dico_command.utils import search
 
 from modules.utils import parse_second
 
@@ -37,6 +38,9 @@ class MusicData:
 
 class Music(dico_command.Addon):
     music_data: Dict[dico.Snowflake, MusicData]
+
+    async def addon_check(self, ctx: dico_command.Context):
+        return bool(search(ctx.member.roles, name="TEAM"))
 
     def on_load(self):
         self.music_data = {}
