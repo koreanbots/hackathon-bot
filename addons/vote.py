@@ -78,8 +78,11 @@ class Vote(dico_command.Addon):
     @vote.subcommand("start")
     async def vote_start(self, ctx: dico_command.Context):
         names = []
-        for channel in ctx.guild.channels:
+        for channel in await self.bot.request_guild_channels(ctx.guild_id):
             if channel.name in [Config.IDEATHON_NAME, Config.MAKETHON_NAME]:
+                parent = self.bot.get_channel(channel.parent_id)
+                if parent.name in Config.EXCLUDE_CATEGORIES:
+                    continue
                 button = dico.Button(
                     style=dico.ButtonStyles.SUCCESS,
                     label="투표하기",
@@ -96,7 +99,6 @@ class Vote(dico_command.Addon):
                     ],
                     reason="투표 시작",
                 )
-                parent = self.bot.get_channel(channel.parent_id)
                 if parent.name not in names:
                     names.append(parent.name)
         await self.bot.db.executemany(
