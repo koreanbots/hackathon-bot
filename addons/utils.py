@@ -7,6 +7,7 @@ class Utils(dico_command.Addon):
         oauth2 = f"https://discord.com/api/oauth2/authorize?client_id={bot_id}&permissions=0&scope=bot"
         if slash:
             oauth2 += "%20applications.commands"
+        oauth2 += "&guild_id=911676954317582368"
         await ctx.reply(oauth2)
 
 
