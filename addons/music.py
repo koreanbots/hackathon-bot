@@ -28,6 +28,7 @@ class MusicData:
         self.latest_channel_id: Optional[dico.Snowflake] = None
         self.loop: bool = False
         self.shuffle: bool = False
+        self.loop_all: bool = False
 
     @property
     def queue_task_unavailable(self) -> bool:
@@ -101,6 +102,8 @@ class Music(dico_command.Addon):
                 audio.volume = music_data.volume
                 await voice.play(audio)
                 await self.bot.create_message(audio.invoked_at, embed=embed)
+                if not music_data.loop and music_data.loop_all:
+                    music_data.queue.append(dico_extsource.YTDLSource(audio.Data))
             else:
                 try:
                     music_data.requires_audio = True
@@ -166,7 +169,11 @@ class Music(dico_command.Addon):
             self.music_data[ctx.guild_id] = MusicData()
         music_data = self.music_data[ctx.guild_id]
         await ctx.create_reaction("<a:loading:868755640909201448>")
-        resp = await dico_extsource.extract(query)
+        resp = (
+            await dico_extsource.extract(query)
+            if "\n" not in query
+            else [await dico_extsource.extract(x) for x in query.split("\n")]
+        )
         if isinstance(resp, list):
             queues = [
                 dico_extsource.YTDLSource(x)
@@ -281,13 +288,19 @@ class Music(dico_command.Addon):
         await ctx.reply("✅ 음악을 다시 재생합니다.")
 
     @dico_command.command("loop", aliases=["l"])
-    async def loop(self, ctx: dico_command.Context):
+    async def loop(self, ctx: dico_command.Context, loop_all: str = None):
         code, text = self.voice_check(ctx, check_connected=True)
         if code:
             return await ctx.reply(text)
         music_data = self.music_data[ctx.guild_id]
-        music_data.loop = not music_data.loop
-        await ctx.reply(f"✅ 현재 재생중인 음악을 반복{'합니다' if music_data.loop else ' 해제합니다'}.")
+        loop_all = bool(loop_all and loop_all == "all")
+        if loop_all:
+            music_data.loop_all = not music_data.loop_all
+            action = "합니다" if music_data.loop_all else " 해제합니다"
+        else:
+            music_data.loop = not music_data.loop
+            action = "합니다" if music_data.loop else " 해제합니다"
+        await ctx.reply(f"✅ {'현재 재생중인' if not loop_all else '현재 대기열의'} 음악을 반복{action}.")
 
     @dico_command.command("shuffle", aliases=["sf"])
     async def shuffle(self, ctx: dico_command.Context):
@@ -317,6 +330,8 @@ class Music(dico_command.Addon):
         extra_scope = ""
         if music_data.loop:
             extra_scope += " | 🔂"
+        elif music_data.loop_all:
+            extra_scope += " | 🔁"
         if music_data.shuffle:
             extra_scope += " | 🔀"
         volume = np_audio.volume
