@@ -1,9 +1,12 @@
+import asyncio
+
 from typing import List
 
 import dico
 import dico_command
 import dico_interaction
 
+from dico.exception import HTTPError
 from dico_command.utils import search
 
 from config import Config
@@ -23,53 +26,73 @@ class Vote(dico_command.Addon):
         parent = self.bot.get_channel(ctx.channel_id).parent_id
         name = self.bot.get_channel(parent).name
 
-        author = ctx.author.id
+        # author = ctx.author.id
+        if not ctx.member.role_ids:
+            return await ctx.send("❌ 해커톤에 참여하지 않으신 경우 투표하실 수 없습니다.")
+        if Config.TEAM_ROLE in ctx.member.role_ids or Config.REVIEWER_ROLE in ctx.member.role_ids:
+            return await ctx.send("❌ 한디리 TEAM 분들과 심사위원분들은 투표하실 수 없습니다.")
+        team_role = [x for x in ctx.member.roles if x.id not in Config.EXCLUDE_ROLES][0]
 
-        # Method 1
         async with self.bot.db.execute("SELECT * FROM vote") as cur:
             data = tuple(map(dict, await cur.fetchall()))
         vote_bot = list(filter(lambda d: d["name"] == name, data))[0]
-        idea_voted = author in self.split_vote(vote_bot["idea_vote"])
-        make_voted = author in self.split_vote(vote_bot["make_vote"])
+        idea_voted = team_role.id in self.split_vote(vote_bot["idea_vote"])
+        make_voted = team_role.id in self.split_vote(vote_bot["make_vote"])
         total_idea_votes = len(
-            tuple(filter(lambda d: author in self.split_vote(d["idea_vote"]), data))
+            tuple(filter(lambda d: team_role.id in self.split_vote(d["idea_vote"]), data))
         )
         total_make_votes = len(
-            tuple(filter(lambda d: author in self.split_vote(d["make_vote"]), data))
+            tuple(filter(lambda d: team_role.id in self.split_vote(d["make_vote"]), data))
         )
-
-        # Method 2
-        """
-        async with self.bot.db.execute("SELECT idea_vote, make_vote FROM vote WHERE name=?", (name,)) as cur:
-            data = dict(await cur.fetchone())
-        idea_voted = author in self.split_vote(data["idea_vote"])
-        make_voted = author in self.split_vote(data["make_vote"])
-        async with self.bot.db.execute("SELECT name FROM vote WHERE idea_vote LIKE ?", (f"%{author}%",)) as cur:
-            total_idea_votes = len(await cur.fetchall())
-        async with self.bot.db.execute("SELECT name FROM vote WHERE make_vote LIKE ?", (f"%{author}%",)) as cur:
-            total_make_votes = len(await cur.fetchall())
-        """
 
         if ctx.data.custom_id.endswith(Config.IDEATHON_NAME):
             if idea_voted:
-                return await ctx.send("❌ 이미 해당 봇의 아이디어톤 분야에 투표했습니다.")
+                return await self.cancel_vote(ctx, "아이디어톤", team_role, name)
+                # return await ctx.send("❌ 이미 해당 봇의 아이디어톤 분야에 투표했습니다.")
             elif total_idea_votes >= Config.MAX_IDEATHON_VOTES:
                 return await ctx.send("❌ 투표 가능 횟수를 초과했습니다.")
             await self.bot.db.execute(
                 "UPDATE vote SET idea_vote=idea_vote||? WHERE name=?",
-                (f"{author},", name),
+                (f"{team_role.id},", name),
             )
         elif ctx.data.custom_id.endswith(Config.MAKETHON_NAME):
             if make_voted:
-                return await ctx.send("❌ 이미 해당 봇의 메이크톤 분야에 투표했습니다.")
+                return await self.cancel_vote(ctx, "메이크톤", team_role, name)
+                # return await ctx.send("❌ 이미 해당 봇의 메이크톤 분야에 투표했습니다.")
             elif total_make_votes >= Config.MAX_MAKETHON_VOTES:
                 return await ctx.send("❌ 투표 가능 횟수를 초과했습니다.")
             await self.bot.db.execute(
                 "UPDATE vote SET make_vote=make_vote||? WHERE name=?",
-                (f"{author},", name),
+                (f"{team_role.id},", name),
             )
         await self.bot.db.commit()
         await ctx.send("✅ 해당 봇에 투표했습니다.")
+
+    async def cancel_vote(self, ctx: dico_interaction.InteractionContext, was_from: str, team_role: dico.Role, name: str):
+        yes_button = dico.Button(style=dico.ButtonStyles.SUCCESS, emoji="⭕", custom_id=f"confy{ctx.id}")
+        no_button = dico.Button(style=dico.ButtonStyles.DANGER, emoji="❌", custom_id=f"confn{ctx.id}")
+        await ctx.send(f"⚠ 이미 해당 봇의 {was_from} 분야에 투표했습니다. 투표를 취소할까요?", components=[dico.ActionRow(yes_button, no_button)])
+        yes_button.disabled = True
+        no_button.disabled = True
+
+        def check(inter: dico_interaction.InteractionContext):
+            return inter.type.message_component and inter.data.custom_id.startswith("conf") and inter.data.custom_id.endswith(str(ctx.id))
+
+        try:
+            resp = await self.bot.interaction.wait_interaction(check=check, timeout=30)
+            await resp.send(update_message=True)
+            if resp.data.custom_id.startswith("confy"):
+                vote = 'make_vote' if was_from == Config.MAKETHON_NAME else 'idea_vote'
+                await self.bot.db.execute(
+                    f"UPDATE vote SET {vote}=REPLACE({vote}, ?, '') WHERE name=?",
+                    (f"{team_role.id},", name),
+                )
+                await self.bot.db.commit()
+                await ctx.edit_original_response(content="✅ 성공적으로 투표를 취소했습니다.", components=[dico.ActionRow(yes_button, no_button)])
+            else:
+                await ctx.edit_original_response(content="✅ 투표 취소를 취소했습니다.", components=[dico.ActionRow(yes_button, no_button)])
+        except asyncio.TimeoutError:
+            await ctx.edit_original_response(content="❌ 시간이 초과됐습니다. 아무것도 변경되지 않았습니다.", components=[dico.ActionRow(yes_button, no_button)])
 
     @dico_command.command("vote")
     async def vote(self, ctx: dico_command.Context):
@@ -114,7 +137,11 @@ class Vote(dico_command.Addon):
                 parent = self.bot.get_channel(channel.parent_id)
                 if parent.name in Config.EXCLUDE_CATEGORIES:
                     continue
-                msg = await self.bot.request_channel_message(channel, channel.last_message_id)
+                try:
+                    msg = await self.bot.request_channel_message(channel, channel.last_message_id)
+                except HTTPError:
+                    await ctx.reply(f"{channel.mention} 실패")
+                    continue
                 # msg = self.bot.get_message(channel.last_message_id)
                 msg.components[0].components[0].disabled = (
                     not msg.components[0].components[0].disabled
