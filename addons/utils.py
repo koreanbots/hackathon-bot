@@ -30,7 +30,11 @@ class Utils(dico_command.Addon):
                 parent = self.bot.get_channel(channel.parent_id)
                 if parent.name in Config.EXCLUDE_CATEGORIES:
                     continue
-                ow = [n for n in channel.permission_overwrites if n.id != ctx.guild_id and n.id != Config.TEAM_ROLE][0]
+                ow = [
+                    n
+                    for n in channel.permission_overwrites
+                    if n.id != ctx.guild_id and n.id != Config.TEAM_ROLE
+                ][0]
                 ow.edit(send_messages=False)
                 await channel.edit_permissions(ow, reason="아이디어톤 종료")
         await ctx.reply("✅ 아이디어톤을 종료했습니다.")
@@ -42,7 +46,11 @@ class Utils(dico_command.Addon):
                 parent = self.bot.get_channel(channel.parent_id)
                 if parent.name in Config.EXCLUDE_CATEGORIES:
                     continue
-                ow = [n for n in channel.permission_overwrites if n.id != ctx.guild_id and n.id != Config.TEAM_ROLE][0]
+                ow = [
+                    n
+                    for n in channel.permission_overwrites
+                    if n.id != ctx.guild_id and n.id != Config.TEAM_ROLE
+                ][0]
                 ow.edit(send_messages=False)
                 await channel.edit_permissions(ow, reason="메이크톤 종료")
         await ctx.reply("✅ 메이크톤을 종료했습니다.")

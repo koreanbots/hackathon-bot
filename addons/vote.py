@@ -29,7 +29,10 @@ class Vote(dico_command.Addon):
         # author = ctx.author.id
         if not ctx.member.role_ids:
             return await ctx.send("❌ 해커톤에 참여하지 않으신 경우 투표하실 수 없습니다.")
-        if Config.TEAM_ROLE in ctx.member.role_ids or Config.REVIEWER_ROLE in ctx.member.role_ids:
+        if (
+            Config.TEAM_ROLE in ctx.member.role_ids
+            or Config.REVIEWER_ROLE in ctx.member.role_ids
+        ):
             return await ctx.send("❌ 한디리 TEAM 분들과 심사위원분들은 투표하실 수 없습니다.")
         team_role = [x for x in ctx.member.roles if x.id not in Config.EXCLUDE_ROLES][0]
         if team_role.name == name:
@@ -41,10 +44,14 @@ class Vote(dico_command.Addon):
         idea_voted = team_role.id in self.split_vote(vote_bot["idea_vote"])
         make_voted = team_role.id in self.split_vote(vote_bot["make_vote"])
         total_idea_votes = len(
-            tuple(filter(lambda d: team_role.id in self.split_vote(d["idea_vote"]), data))
+            tuple(
+                filter(lambda d: team_role.id in self.split_vote(d["idea_vote"]), data)
+            )
         )
         total_make_votes = len(
-            tuple(filter(lambda d: team_role.id in self.split_vote(d["make_vote"]), data))
+            tuple(
+                filter(lambda d: team_role.id in self.split_vote(d["make_vote"]), data)
+            )
         )
 
         if ctx.data.custom_id.endswith(Config.IDEATHON_NAME):
@@ -70,31 +77,57 @@ class Vote(dico_command.Addon):
         await self.bot.db.commit()
         await ctx.send("✅ 해당 봇에 투표했습니다.")
 
-    async def cancel_vote(self, ctx: dico_interaction.InteractionContext, was_from: str, team_role: dico.Role, name: str):
-        yes_button = dico.Button(style=dico.ButtonStyles.SUCCESS, emoji="⭕", custom_id=f"confy{ctx.id}")
-        no_button = dico.Button(style=dico.ButtonStyles.DANGER, emoji="❌", custom_id=f"confn{ctx.id}")
-        await ctx.send(f"⚠ 이미 해당 봇의 {was_from} 분야에 투표했습니다. 투표를 취소할까요?", components=[dico.ActionRow(yes_button, no_button)])
+    async def cancel_vote(
+        self,
+        ctx: dico_interaction.InteractionContext,
+        was_from: str,
+        team_role: dico.Role,
+        name: str,
+    ):
+        yes_button = dico.Button(
+            style=dico.ButtonStyles.SUCCESS, emoji="⭕", custom_id=f"confy{ctx.id}"
+        )
+        no_button = dico.Button(
+            style=dico.ButtonStyles.DANGER, emoji="❌", custom_id=f"confn{ctx.id}"
+        )
+        await ctx.send(
+            f"⚠ 이미 해당 봇의 {was_from} 분야에 투표했습니다. 투표를 취소할까요?",
+            components=[dico.ActionRow(yes_button, no_button)],
+        )
         yes_button.disabled = True
         no_button.disabled = True
 
         def check(inter: dico_interaction.InteractionContext):
-            return inter.type.message_component and inter.data.custom_id.startswith("conf") and inter.data.custom_id.endswith(str(ctx.id))
+            return (
+                inter.type.message_component
+                and inter.data.custom_id.startswith("conf")
+                and inter.data.custom_id.endswith(str(ctx.id))
+            )
 
         try:
             resp = await self.bot.interaction.wait_interaction(check=check, timeout=30)
             await resp.send(update_message=True)
             if resp.data.custom_id.startswith("confy"):
-                vote = 'make_vote' if was_from == Config.MAKETHON_NAME else 'idea_vote'
+                vote = "make_vote" if was_from == Config.MAKETHON_NAME else "idea_vote"
                 await self.bot.db.execute(
                     f"UPDATE vote SET {vote}=REPLACE({vote}, ?, '') WHERE name=?",
                     (f"{team_role.id},", name),
                 )
                 await self.bot.db.commit()
-                await ctx.edit_original_response(content="✅ 성공적으로 투표를 취소했습니다.", components=[dico.ActionRow(yes_button, no_button)])
+                await ctx.edit_original_response(
+                    content="✅ 성공적으로 투표를 취소했습니다.",
+                    components=[dico.ActionRow(yes_button, no_button)],
+                )
             else:
-                await ctx.edit_original_response(content="✅ 투표 취소를 취소했습니다.", components=[dico.ActionRow(yes_button, no_button)])
+                await ctx.edit_original_response(
+                    content="✅ 투표 취소를 취소했습니다.",
+                    components=[dico.ActionRow(yes_button, no_button)],
+                )
         except asyncio.TimeoutError:
-            await ctx.edit_original_response(content="❌ 시간이 초과됐습니다. 아무것도 변경되지 않았습니다.", components=[dico.ActionRow(yes_button, no_button)])
+            await ctx.edit_original_response(
+                content="❌ 시간이 초과됐습니다. 아무것도 변경되지 않았습니다.",
+                components=[dico.ActionRow(yes_button, no_button)],
+            )
 
     @dico_command.command("vote")
     async def vote(self, ctx: dico_command.Context):
@@ -140,7 +173,9 @@ class Vote(dico_command.Addon):
                 if parent.name in Config.EXCLUDE_CATEGORIES:
                     continue
                 try:
-                    msg = await self.bot.request_channel_message(channel, channel.last_message_id)
+                    msg = await self.bot.request_channel_message(
+                        channel, channel.last_message_id
+                    )
                 except HTTPError:
                     await ctx.reply(f"{channel.mention} 실패")
                     continue
