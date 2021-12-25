@@ -109,9 +109,13 @@ class Vote(dico_command.Addon):
 
     @vote.subcommand("toggle")
     async def vote_toggle(self, ctx: dico_command.Context):
-        for channel in ctx.guild.channels:
+        for channel in await ctx.guild.request_channels():
             if channel.name in [Config.IDEATHON_NAME, Config.MAKETHON_NAME]:
-                msg = self.bot.get_message(channel.last_message_id)
+                parent = self.bot.get_channel(channel.parent_id)
+                if parent.name in Config.EXCLUDE_CATEGORIES:
+                    continue
+                msg = await self.bot.request_channel_message(channel, channel.last_message_id)
+                # msg = self.bot.get_message(channel.last_message_id)
                 msg.components[0].components[0].disabled = (
                     not msg.components[0].components[0].disabled
                 )
