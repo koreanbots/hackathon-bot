@@ -32,6 +32,8 @@ class Vote(dico_command.Addon):
         if Config.TEAM_ROLE in ctx.member.role_ids or Config.REVIEWER_ROLE in ctx.member.role_ids:
             return await ctx.send("❌ 한디리 TEAM 분들과 심사위원분들은 투표하실 수 없습니다.")
         team_role = [x for x in ctx.member.roles if x.id not in Config.EXCLUDE_ROLES][0]
+        if team_role.name == name:
+            return await ctx.send("❌ 자신의 봇에는 투표하실 수 없습니다.")
 
         async with self.bot.db.execute("SELECT * FROM vote") as cur:
             data = tuple(map(dict, await cur.fetchall()))
