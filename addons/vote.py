@@ -239,7 +239,9 @@ class Vote(dico_command.Addon):
         await ctx.reply(text)
 
     @vote.subcommand("voters")
-    async def vote_voters(self, ctx: dico_command.Context, to_show: str = None, unvoted: str = None):
+    async def vote_voters(
+        self, ctx: dico_command.Context, to_show: str = None, unvoted: str = None
+    ):
         async with self.bot.db.execute("SELECT * FROM vote") as cur:
             data = tuple(map(dict, await cur.fetchall()))
         members = await ctx.guild.list_members(limit=200)
@@ -254,7 +256,11 @@ class Vote(dico_command.Addon):
                 # or 918472234069286953 in member.role_ids
             ):
                 continue
-            team_role = [x for x in member.roles if x.id not in Config.EXCLUDE_ROLES and x.id != 918472234069286953]
+            team_role = [
+                x
+                for x in member.roles
+                if x.id not in Config.EXCLUDE_ROLES and x.id != 918472234069286953
+            ]
             if not team_role:
                 continue
             team_role = team_role[0]
