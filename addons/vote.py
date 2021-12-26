@@ -72,6 +72,8 @@ class Vote(dico_command.Addon):
                 (f"{team_role.id},", name),
             )
         elif ctx.data.custom_id.endswith(Config.MAKETHON_NAME):
+            if 922108075471687720 not in ctx.member.roles:
+                return await ctx.send("❌ 아이디어톤만 참여하신 경우 투표하실 수 없습니다.")
             if make_voted:
                 return await self.cancel_vote(ctx, "메이크톤", team_role, name)
                 # return await ctx.send("❌ 이미 해당 봇의 메이크톤 분야에 투표했습니다.")
