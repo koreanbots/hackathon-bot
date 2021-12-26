@@ -34,7 +34,14 @@ class Vote(dico_command.Addon):
             or Config.REVIEWER_ROLE in ctx.member.role_ids
         ):
             return await ctx.send("❌ 한디리 TEAM 분들과 심사위원분들은 투표하실 수 없습니다.")
-        team_role = [x for x in ctx.member.roles if x.id not in Config.EXCLUDE_ROLES][0]
+        team_role = [
+            x
+            for x in ctx.member.roles
+            if x.id not in Config.EXCLUDE_ROLES and x.id != 918472234069286953
+        ]
+        if not team_role:
+            return await ctx.send("❌ 해커톤에 참여하지 않으신 경우 투표하실 수 없습니다.")
+        team_role = team_role[0]
         if team_role.name == name:
             return await ctx.send("❌ 자신의 봇에는 투표하실 수 없습니다.")
 
@@ -192,10 +199,13 @@ class Vote(dico_command.Addon):
         await ctx.reply("✅ 세팅이 완료됐습니다.")
 
     @vote.subcommand("status")
-    async def vote_status(self, ctx: dico_command.Context, to_show: str = None):
+    async def vote_status(
+        self, ctx: dico_command.Context, to_show: str = None, clean: str = None
+    ):
         async with self.bot.db.execute("""SELECT * FROM vote""") as cur:
             data = map(dict, await cur.fetchall())
         text = ""
+        clean = bool(clean == "clean")
         if to_show == Config.IDEATHON_NAME:
             data = sorted(
                 data, key=lambda n: len(self.split_vote(n["idea_vote"])), reverse=True
@@ -217,9 +227,53 @@ class Vote(dico_command.Addon):
             if not to_show:
                 text += f"`{x['name']}`: 아이디어톤 `{len(self.split_vote(x['idea_vote']))}`표 | 메이크톤 `{len(self.split_vote(x['make_vote']))}`표\n"
             elif to_show == Config.IDEATHON_NAME:
-                text += f"{emoji}#{i} `{x['name']}`: 아이디어톤 `{len(self.split_vote(x['idea_vote']))}`표\n"
+                vote_count = len(self.split_vote(x["idea_vote"]))
+                if clean and not vote_count:
+                    continue
+                text += f"{emoji}#{i} `{x['name']}`: 아이디어톤 `{vote_count}`표\n"
             elif to_show == Config.MAKETHON_NAME:
-                text += f"{emoji}#{i} `{x['name']}`: 메이크톤 `{len(self.split_vote(x['make_vote']))}`표\n"
+                vote_count = len(self.split_vote(x["make_vote"]))
+                if clean and not vote_count:
+                    continue
+                text += f"{emoji}#{i} `{x['name']}`: 메이크톤 `{vote_count}`표\n"
+        await ctx.reply(text)
+
+    @vote.subcommand("voters")
+    async def vote_voters(self, ctx: dico_command.Context, to_show: str = None):
+        async with self.bot.db.execute("SELECT * FROM vote") as cur:
+            data = tuple(map(dict, await cur.fetchall()))
+        members = await ctx.guild.list_members(limit=200)
+        text = ""
+        for member in members:
+            if (
+                not member.roles
+                or Config.TEAM_ROLE in member.role_ids
+                or Config.REVIEWER_ROLE in member.role_ids
+                or 923940331152629771 in member.role_ids
+                or 918472234069286953 in member.role_ids
+            ):
+                continue
+            team_role = [x for x in member.roles if x.id not in Config.EXCLUDE_ROLES][0]
+            total_idea_votes = len(
+                tuple(
+                    filter(
+                        lambda d: team_role.id in self.split_vote(d["idea_vote"]), data
+                    )
+                )
+            )
+            total_make_votes = len(
+                tuple(
+                    filter(
+                        lambda d: team_role.id in self.split_vote(d["make_vote"]), data
+                    )
+                )
+            )
+            if not to_show:
+                text += f"<@&{team_role.id}>: 아이디어톤 `{total_idea_votes}`표 | 메이크톤 `{total_make_votes}`표\n"
+            elif to_show == Config.IDEATHON_NAME:
+                text += f"<@&{team_role.id}>: 아이디어톤 `{total_idea_votes}`표\n"
+            elif to_show == Config.MAKETHON_NAME:
+                text += f"<@&{team_role.id}>: 메이크톤 `{total_make_votes}`표\n"
         await ctx.reply(text)
 
 
