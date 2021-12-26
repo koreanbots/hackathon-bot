@@ -239,21 +239,25 @@ class Vote(dico_command.Addon):
         await ctx.reply(text)
 
     @vote.subcommand("voters")
-    async def vote_voters(self, ctx: dico_command.Context, to_show: str = None):
+    async def vote_voters(self, ctx: dico_command.Context, to_show: str = None, unvoted: str = None):
         async with self.bot.db.execute("SELECT * FROM vote") as cur:
             data = tuple(map(dict, await cur.fetchall()))
         members = await ctx.guild.list_members(limit=200)
         text = ""
+        unvoted = bool(unvoted == "unvoted")
         for member in members:
             if (
                 not member.roles
                 or Config.TEAM_ROLE in member.role_ids
                 or Config.REVIEWER_ROLE in member.role_ids
                 or 923940331152629771 in member.role_ids
-                or 918472234069286953 in member.role_ids
+                # or 918472234069286953 in member.role_ids
             ):
                 continue
-            team_role = [x for x in member.roles if x.id not in Config.EXCLUDE_ROLES][0]
+            team_role = [x for x in member.roles if x.id not in Config.EXCLUDE_ROLES and x.id != 918472234069286953]
+            if not team_role:
+                continue
+            team_role = team_role[0]
             total_idea_votes = len(
                 tuple(
                     filter(
@@ -269,12 +273,16 @@ class Vote(dico_command.Addon):
                 )
             )
             if not to_show:
-                text += f"<@&{team_role.id}>: 아이디어톤 `{total_idea_votes}`표 | 메이크톤 `{total_make_votes}`표\n"
+                text += f"`{team_role.name}`: 아이디어톤 `{total_idea_votes}`표 | 메이크톤 `{total_make_votes}`표\n"
             elif to_show == Config.IDEATHON_NAME:
-                text += f"<@&{team_role.id}>: 아이디어톤 `{total_idea_votes}`표\n"
+                if unvoted and total_idea_votes:
+                    continue
+                text += f"`{team_role.name}`: 아이디어톤 `{total_idea_votes}`표\n"
             elif to_show == Config.MAKETHON_NAME:
-                text += f"<@&{team_role.id}>: 메이크톤 `{total_make_votes}`표\n"
-        await ctx.reply(text)
+                if unvoted and total_make_votes:
+                    continue
+                text += f"`{team_role.name}`: 메이크톤 `{total_make_votes}`표\n"
+        await ctx.reply(text or "❌ 해당하는 데이터가 존재하지 않습니다.")
 
 
 def load(bot):
