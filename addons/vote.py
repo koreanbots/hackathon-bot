@@ -197,9 +197,13 @@ class Vote(dico_command.Addon):
             data = map(dict, await cur.fetchall())
         text = ""
         if to_show == Config.IDEATHON_NAME:
-            data = sorted(data, key=lambda n: len(self.split_vote(n['idea_vote'])), reverse=True)
+            data = sorted(
+                data, key=lambda n: len(self.split_vote(n["idea_vote"])), reverse=True
+            )
         elif to_show == Config.MAKETHON_NAME:
-            data = sorted(data, key=lambda n: len(self.split_vote(n['make_vote'])), reverse=True)
+            data = sorted(
+                data, key=lambda n: len(self.split_vote(n["make_vote"])), reverse=True
+            )
         for i, x in enumerate(data):
             i += 1
             if i == 1:
