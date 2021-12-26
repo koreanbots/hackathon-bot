@@ -134,10 +134,10 @@ class Vote(dico_command.Addon):
         pass
 
     @vote.subcommand("start")
-    async def vote_start(self, ctx: dico_command.Context):
+    async def vote_start(self, ctx: dico_command.Context, to_open: str):
         names = []
         for channel in await self.bot.request_guild_channels(ctx.guild_id):
-            if channel.name in [Config.IDEATHON_NAME, Config.MAKETHON_NAME]:
+            if channel.name in [to_open]:
                 parent = self.bot.get_channel(channel.parent_id)
                 if parent.name in Config.EXCLUDE_CATEGORIES:
                     continue
@@ -159,16 +159,21 @@ class Vote(dico_command.Addon):
                 )
                 if parent.name not in names:
                     names.append(parent.name)
-        await self.bot.db.executemany(
-            """INSERT INTO vote VALUES(?, '', '')""", [(x,) for x in names]
-        )
+        if to_open == Config.IDEATHON_NAME:
+            await self.bot.db.executemany(
+                """INSERT INTO vote VALUES(?, '', '')""", [(x,) for x in names]
+            )
         await self.bot.db.commit()
         await ctx.reply("✅ 세팅이 완료됐습니다.")
 
     @vote.subcommand("toggle")
-    async def vote_toggle(self, ctx: dico_command.Context):
+    async def vote_toggle(self, ctx: dico_command.Context, to_lock: str = None):
+        if not to_lock:
+            lock = [Config.IDEATHON_NAME, Config.MAKETHON_NAME]
+        else:
+            lock = [to_lock]
         for channel in await ctx.guild.request_channels():
-            if channel.name in [Config.IDEATHON_NAME, Config.MAKETHON_NAME]:
+            if channel.name in lock:
                 parent = self.bot.get_channel(channel.parent_id)
                 if parent.name in Config.EXCLUDE_CATEGORIES:
                     continue
@@ -187,12 +192,30 @@ class Vote(dico_command.Addon):
         await ctx.reply("✅ 세팅이 완료됐습니다.")
 
     @vote.subcommand("status")
-    async def vote_status(self, ctx: dico_command.Context):
+    async def vote_status(self, ctx: dico_command.Context, to_show: str = None):
         async with self.bot.db.execute("""SELECT * FROM vote""") as cur:
             data = map(dict, await cur.fetchall())
         text = ""
-        for x in data:
-            text += f"`{x['name']}`: 아이디어톤 `{len(self.split_vote(x['idea_vote']))}`표 | 메이크톤 `{len(self.split_vote(x['make_vote']))}`표\n"
+        if to_show == Config.IDEATHON_NAME:
+            data = sorted(data, key=lambda n: len(self.split_vote(n['idea_vote'])), reverse=True)
+        elif to_show == Config.MAKETHON_NAME:
+            data = sorted(data, key=lambda n: len(self.split_vote(n['make_vote'])), reverse=True)
+        for i, x in enumerate(data):
+            i += 1
+            if i == 1:
+                emoji = "🥇 "
+            elif i == 2:
+                emoji = "🥈 "
+            elif i == 3:
+                emoji = "🥉 "
+            else:
+                emoji = ""
+            if not to_show:
+                text += f"`{x['name']}`: 아이디어톤 `{len(self.split_vote(x['idea_vote']))}`표 | 메이크톤 `{len(self.split_vote(x['make_vote']))}`표\n"
+            elif to_show == Config.IDEATHON_NAME:
+                text += f"{emoji}#{i} `{x['name']}`: 아이디어톤 `{len(self.split_vote(x['idea_vote']))}`표\n"
+            elif to_show == Config.MAKETHON_NAME:
+                text += f"{emoji}#{i} `{x['name']}`: 메이크톤 `{len(self.split_vote(x['make_vote']))}`표\n"
         await ctx.reply(text)
 
 
